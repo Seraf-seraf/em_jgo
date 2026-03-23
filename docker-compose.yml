@@ -19,7 +19,7 @@ services:
   subscriptions:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: build/Dockerfile
     container_name: subscriptions-service
     depends_on:
       postgres:

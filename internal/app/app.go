@@ -16,10 +16,10 @@ import (
 	"github.com/pressly/goose/v3"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
+	"github.com/example/em_jgo/internal/config"
 	"github.com/example/em_jgo/internal/repository/postgres"
 	"github.com/example/em_jgo/internal/service"
 	httpapi "github.com/example/em_jgo/internal/transport/http"
-	"github.com/example/em_jgo/pkg/config"
 )
 
 //go:embed migrations/*.sql
