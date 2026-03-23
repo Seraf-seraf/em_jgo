@@ -22,7 +22,7 @@ generate:
 	go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
 
 up:
-	docker-compose up --build -d
+	docker compose up --build -d
 
 down:
-	docker-compose down -v
+	docker compose down -v
