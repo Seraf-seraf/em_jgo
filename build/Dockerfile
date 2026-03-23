@@ -9,7 +9,7 @@ FROM alpine:3.22
 WORKDIR /app
 RUN adduser -D appuser
 COPY --from=builder /subscriptions /app/subscriptions
-COPY configs/config.docker.yml /app/configs/config.yml
+COPY configs/config.yml /app/configs/config.yml
 RUN mkdir -p /app/var/log/subscriptions && chown -R appuser:appuser /app
 USER appuser
 EXPOSE 8080

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -96,9 +97,84 @@ func Load(path string) (Config, error) {
 		cfg.Logger.Service = "subscriptions-service"
 	}
 
+	applyEnvOverrides(&cfg)
+
 	return cfg, nil
 }
 
 func (c PostgresConfig) DSN() string {
 	return fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=%s pool_max_conns=%d pool_min_conns=%d pool_max_conn_lifetime=%s", c.Host, c.Port, c.Database, c.User, c.Password, c.SSLMode, c.MaxOpenConns, c.MinIdleConns, c.ConnMaxLifetime)
+}
+
+func applyEnvOverrides(cfg *Config) {
+	cfg.HTTP.Host = envString("APP_HTTP_HOST", cfg.HTTP.Host)
+	cfg.HTTP.Port = envInt("APP_HTTP_PORT", cfg.HTTP.Port)
+	cfg.HTTP.ReadTimeout = envDuration("APP_HTTP_READ_TIMEOUT", cfg.HTTP.ReadTimeout)
+	cfg.HTTP.WriteTimeout = envDuration("APP_HTTP_WRITE_TIMEOUT", cfg.HTTP.WriteTimeout)
+	cfg.HTTP.ShutdownTimeout = envDuration("APP_HTTP_SHUTDOWN_TIMEOUT", cfg.HTTP.ShutdownTimeout)
+
+	cfg.Postgres.Host = envString("APP_POSTGRES_HOST", cfg.Postgres.Host)
+	cfg.Postgres.Port = envInt("APP_POSTGRES_PORT", cfg.Postgres.Port)
+	cfg.Postgres.Database = envString("APP_POSTGRES_DATABASE", cfg.Postgres.Database)
+	cfg.Postgres.User = envString("APP_POSTGRES_USER", cfg.Postgres.User)
+	cfg.Postgres.Password = envString("APP_POSTGRES_PASSWORD", cfg.Postgres.Password)
+	cfg.Postgres.SSLMode = envString("APP_POSTGRES_SSL_MODE", cfg.Postgres.SSLMode)
+	cfg.Postgres.MaxOpenConns = int32(envInt("APP_POSTGRES_MAX_OPEN_CONNS", int(cfg.Postgres.MaxOpenConns)))
+	cfg.Postgres.MinIdleConns = int32(envInt("APP_POSTGRES_MIN_IDLE_CONNS", int(cfg.Postgres.MinIdleConns)))
+	cfg.Postgres.ConnMaxLifetime = envDuration("APP_POSTGRES_CONN_MAX_LIFETIME", cfg.Postgres.ConnMaxLifetime)
+
+	cfg.Logger.Level = envString("APP_LOGGER_LEVEL", cfg.Logger.Level)
+	cfg.Logger.Format = envString("APP_LOGGER_FORMAT", cfg.Logger.Format)
+	cfg.Logger.OutputDir = envString("APP_LOGGER_OUTPUT_DIR", cfg.Logger.OutputDir)
+	cfg.Logger.AddSource = envBool("APP_LOGGER_ADD_SOURCE", cfg.Logger.AddSource)
+	cfg.Logger.Service = envString("APP_LOGGER_SERVICE", cfg.Logger.Service)
+}
+
+func envString(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func envInt(key string, fallback int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func envDuration(key string, fallback time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := time.ParseDuration(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
+}
+
+func envBool(key string, fallback bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
 }

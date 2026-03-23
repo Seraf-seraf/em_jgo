@@ -14,8 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/example/em_jgo/internal/domain/subscription"
+	"github.com/example/em_jgo/internal/month"
 	"github.com/example/em_jgo/internal/service"
-	"github.com/example/em_jgo/pkg/month"
 )
 
 type Repository struct {
