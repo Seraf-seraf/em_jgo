@@ -3,7 +3,7 @@ generate:
   chi-server: true
   embedded-spec: true
   models: true
-output: internal/transport/http/openapi.gen.go
+output: internal/pkg/transport/http/openapi.gen.go
 compatibility:
   old-merge-schemas: true
 output-options:

@@ -19,7 +19,8 @@ test:
 	go test ./...
 
 generate:
-	go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
+	cp api/openapi.yaml internal/pkg/transport/http/openapi.yaml
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0 -config api/oapi-codegen.yaml api/openapi.yaml
 
 up:
 	docker compose up --build -d

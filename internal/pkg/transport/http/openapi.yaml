@@ -6,11 +6,28 @@ info:
 servers:
   - url: /
 tags:
+  - name: Сервис
+    description: Служебные операции сервиса
   - name: Подписки
     description: Операции управления подписками
   - name: Отчеты
     description: Операции агрегации стоимости подписок
 paths:
+  /healthz:
+    get:
+      tags:
+        - Сервис
+      operationId: GetHealthz
+      summary: Проверить доступность сервиса
+      description: Возвращает 200 OK, если HTTP-сервис запущен и принимает запросы.
+      responses:
+        '200':
+          description: Сервис доступен.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
   /api/v1/subscriptions:
     get:
       tags:
@@ -256,8 +273,7 @@ components:
         start_date:
           $ref: '#/components/schemas/MonthYear'
         end_date:
-          allOf:
-            - $ref: '#/components/schemas/MonthYear'
+          $ref: '#/components/schemas/MonthYear'
           nullable: true
           description: Дата окончания подписки в формате MM-YYYY.
     UpdateSubscriptionRequest:
@@ -284,8 +300,7 @@ components:
         start_date:
           $ref: '#/components/schemas/MonthYear'
         end_date:
-          allOf:
-            - $ref: '#/components/schemas/MonthYear'
+          $ref: '#/components/schemas/MonthYear'
           nullable: true
           description: Дата окончания подписки в формате MM-YYYY.
     SubscriptionResponse:
@@ -314,8 +329,7 @@ components:
         start_date:
           $ref: '#/components/schemas/MonthYear'
         end_date:
-          allOf:
-            - $ref: '#/components/schemas/MonthYear'
+          $ref: '#/components/schemas/MonthYear'
           nullable: true
           description: Дата окончания подписки в формате MM-YYYY.
     SubscriptionListResponse:

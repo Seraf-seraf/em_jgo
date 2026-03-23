@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d subscriptions"]
       interval: 5s
@@ -27,10 +27,17 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./var/log/subscriptions:/app/var/log/subscriptions
+      - subscriptions_logs:/app/var/log/subscriptions
     environment:
       APP_POSTGRES_HOST: postgres
       TZ: UTC
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz | grep -qx 'ok'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
 volumes:
   postgres_data:
+  subscriptions_logs:

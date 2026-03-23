@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/example/em_jgo/internal/pkg/config"
 	httpapi "github.com/example/em_jgo/internal/pkg/transport/http"
@@ -54,12 +55,8 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, err
 	router.Use(chimiddleware.Recoverer)
 	router.Use(accessLogMiddleware(logger))
 	httpapi.HandlerFromMux(handler, router)
-	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
 	router.Get("/swagger/doc.yaml", func(w http.ResponseWriter, r *http.Request) {
-		spec, err := httpapi.GetSwagger()
+		spec, err := swaggerYAML()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -123,11 +120,19 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger)
 }
 
 func mustSwagger() []byte {
-	spec, err := httpapi.GetSwagger()
+	spec, err := swaggerYAML()
 	if err != nil {
 		panic(err)
 	}
 	return spec
+}
+
+func swaggerYAML() ([]byte, error) {
+	spec, err := httpapi.GetSwagger()
+	if err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(spec)
 }
 
 func accessLogMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {

@@ -10,6 +10,7 @@ WORKDIR /app
 RUN adduser -D appuser
 COPY --from=builder /subscriptions /app/subscriptions
 COPY configs/config.yml /app/configs/config.yml
+COPY internal/migrations /app/internal/migrations
 RUN mkdir -p /app/var/log/subscriptions && chown -R appuser:appuser /app
 USER appuser
 EXPOSE 8080

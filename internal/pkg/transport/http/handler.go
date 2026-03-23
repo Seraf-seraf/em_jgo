@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -23,22 +24,28 @@ type SubscriptionService interface {
 	CalculateTotalCost(ctx context.Context, filter subscription.TotalCostFilter) (int, error)
 }
 
-type Handler struct {
+type ServerHandler struct {
 	service SubscriptionService
 	logger  *slog.Logger
 }
 
-func NewHandler(service SubscriptionService, logger *slog.Logger) *Handler {
-	return &Handler{service: service, logger: logger}
+func NewHandler(service SubscriptionService, logger *slog.Logger) *ServerHandler {
+	return &ServerHandler{service: service, logger: logger}
 }
 
-func (h *Handler) ListSubscriptions(w http.ResponseWriter, r *http.Request, params ListSubscriptionsParams) {
+func (h *ServerHandler) GetHealthz(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("ok"))
+}
+
+func (h *ServerHandler) ListSubscriptions(w http.ResponseWriter, r *http.Request, params ListSubscriptionsParams) {
 	const methodCtx = "http.ListSubscriptions"
 	log := h.logger.With("method", methodCtx)
 
 	filter := subscription.ListFilter{Limit: 20}
-	if params.UserID != nil {
-		filter.UserID = params.UserID
+	if params.UserId != nil {
+		filter.UserID = params.UserId
 	}
 	if params.ServiceName != nil {
 		filter.ServiceName = params.ServiceName
@@ -65,7 +72,7 @@ func (h *Handler) ListSubscriptions(w http.ResponseWriter, r *http.Request, para
 	writeJSON(w, http.StatusOK, SubscriptionListResponse{Items: responseItems, Total: total, Limit: filter.Limit, Offset: filter.Offset})
 }
 
-func (h *Handler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
+func (h *ServerHandler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 	const methodCtx = "http.CreateSubscription"
 	log := h.logger.With("method", methodCtx)
 
@@ -91,7 +98,7 @@ func (h *Handler) CreateSubscription(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toResponse(created))
 }
 
-func (h *Handler) GetSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
+func (h *ServerHandler) GetSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
 	item, err := h.service.GetByID(r.Context(), subscriptionID)
 	if err != nil {
 		h.writeServiceError(w, r, err)
@@ -101,7 +108,7 @@ func (h *Handler) GetSubscription(w http.ResponseWriter, r *http.Request, subscr
 	writeJSON(w, http.StatusOK, toResponse(item))
 }
 
-func (h *Handler) UpdateSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
+func (h *ServerHandler) UpdateSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
 	const methodCtx = "http.UpdateSubscription"
 	log := h.logger.With("method", methodCtx)
 
@@ -127,7 +134,7 @@ func (h *Handler) UpdateSubscription(w http.ResponseWriter, r *http.Request, sub
 	writeJSON(w, http.StatusOK, toResponse(updated))
 }
 
-func (h *Handler) DeleteSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
+func (h *ServerHandler) DeleteSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
 	if err := h.service.Delete(r.Context(), subscriptionID); err != nil {
 		h.writeServiceError(w, r, err)
 		return
@@ -136,7 +143,7 @@ func (h *Handler) DeleteSubscription(w http.ResponseWriter, r *http.Request, sub
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) CalculateTotalCost(w http.ResponseWriter, r *http.Request, params CalculateTotalCostParams) {
+func (h *ServerHandler) CalculateTotalCost(w http.ResponseWriter, r *http.Request, params CalculateTotalCostParams) {
 	start, err := month.Parse(string(params.StartPeriod))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Message: "invalid start_period"})
@@ -151,7 +158,7 @@ func (h *Handler) CalculateTotalCost(w http.ResponseWriter, r *http.Request, par
 	filter := subscription.TotalCostFilter{
 		StartPeriod: start,
 		EndPeriod:   end,
-		UserID:      params.UserID,
+		UserID:      params.UserId,
 		ServiceName: params.ServiceName,
 	}
 
@@ -164,7 +171,7 @@ func (h *Handler) CalculateTotalCost(w http.ResponseWriter, r *http.Request, par
 	writeJSON(w, http.StatusOK, TotalCostResponse{TotalCost: total, Currency: "RUB", StartPeriod: params.StartPeriod, EndPeriod: params.EndPeriod})
 }
 
-func (h *Handler) writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
+func (h *ServerHandler) writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, ErrorResponse{Message: err.Error()})
@@ -197,7 +204,7 @@ func fromCreateRequest(request CreateSubscriptionRequest) (subscription.Subscrip
 		end = &value
 	}
 
-	return subscription.Subscription{ID: uuid.New(), ServiceName: request.ServiceName, Price: request.Price, UserID: request.UserID, StartDate: start, EndDate: end}, nil
+	return subscription.Subscription{ID: uuid.New(), ServiceName: request.ServiceName, Price: request.Price, UserID: request.UserId, StartDate: start, EndDate: end}, nil
 }
 
 func fromUpdateRequest(id uuid.UUID, request UpdateSubscriptionRequest) (subscription.Subscription, error) {
@@ -214,14 +221,26 @@ func fromUpdateRequest(id uuid.UUID, request UpdateSubscriptionRequest) (subscri
 		end = &value
 	}
 
-	return subscription.Subscription{ID: id, ServiceName: request.ServiceName, Price: request.Price, UserID: request.UserID, StartDate: start, EndDate: end}, nil
+	return subscription.Subscription{ID: id, ServiceName: request.ServiceName, Price: request.Price, UserID: request.UserId, StartDate: start, EndDate: end}, nil
 }
 
 func toResponse(item subscription.Subscription) SubscriptionResponse {
-	response := SubscriptionResponse{Id: item.ID, ServiceName: item.ServiceName, Price: item.Price, UserID: item.UserID, StartDate: month.Format(item.StartDate)}
+	response := SubscriptionResponse{Id: item.ID, ServiceName: item.ServiceName, Price: item.Price, UserId: item.UserID, StartDate: month.Format(item.StartDate)}
 	if item.EndDate != nil {
 		formatted := MonthYear(month.Format(*item.EndDate))
 		response.EndDate = &formatted
 	}
 	return response
+}
+
+func BindJSON[T any](_ context.Context, r *http.Request, dst *T) error {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(dst)
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
 }

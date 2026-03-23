@@ -29,7 +29,9 @@ func TestRepositoryCRUDAndTotalCost(t *testing.T) {
 	}
 	testcontainers.SkipIfProviderIsNotHealthy(t)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	container, err := postgresmodule.Run(ctx,
 		"postgres:18",
 		postgresmodule.WithDatabase("subscriptions"),
@@ -43,6 +45,8 @@ func TestRepositoryCRUDAndTotalCost(t *testing.T) {
 
 	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
+
+	require.NoError(t, waitForDatabase(ctx, dsn))
 
 	pool, err := pgxpool.New(ctx, dsn)
 	require.NoError(t, err)
@@ -111,6 +115,33 @@ func applyMigrations(ctx context.Context, dsn string) error {
 		return fmt.Errorf("goose up: %w", err)
 	}
 	return nil
+}
+
+func waitForDatabase(ctx context.Context, dsn string) error {
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return fmt.Errorf("open db: %w", err)
+	}
+	defer db.Close()
+
+	ticker := time.NewTicker(250 * time.Millisecond)
+	defer ticker.Stop()
+
+	var lastErr error
+	for {
+		pingCtx, cancel := context.WithTimeout(ctx, time.Second)
+		lastErr = db.PingContext(pingCtx)
+		cancel()
+		if lastErr == nil {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for db: %w (last ping error: %v)", ctx.Err(), lastErr)
+		case <-ticker.C:
+		}
+	}
 }
 
 func migrationsDir() string {
