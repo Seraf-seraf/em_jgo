@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 
 	"github.com/example/em_jgo/internal/domain/subscription"
@@ -41,7 +42,6 @@ func (h *ServerHandler) GetHealthz(w http.ResponseWriter, _ *http.Request) {
 
 func (h *ServerHandler) ListSubscriptions(w http.ResponseWriter, r *http.Request, params ListSubscriptionsParams) {
 	const methodCtx = "http.ListSubscriptions"
-	log := h.logger.With("method", methodCtx)
 
 	filter := subscription.ListFilter{Limit: 20}
 	if params.UserId != nil {
@@ -59,8 +59,7 @@ func (h *ServerHandler) ListSubscriptions(w http.ResponseWriter, r *http.Request
 
 	items, total, err := h.service.List(r.Context(), filter)
 	if err != nil {
-		log.ErrorContext(r.Context(), "list failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Message: err.Error()})
+		h.writeServiceError(w, r, err, methodCtx)
 		return
 	}
 
@@ -91,7 +90,7 @@ func (h *ServerHandler) CreateSubscription(w http.ResponseWriter, r *http.Reques
 
 	created, err := h.service.Create(r.Context(), item)
 	if err != nil {
-		h.writeServiceError(w, r, err)
+		h.writeServiceError(w, r, err, methodCtx)
 		return
 	}
 
@@ -99,9 +98,11 @@ func (h *ServerHandler) CreateSubscription(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ServerHandler) GetSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
+	const methodCtx = "http.GetSubscription"
+
 	item, err := h.service.GetByID(r.Context(), subscriptionID)
 	if err != nil {
-		h.writeServiceError(w, r, err)
+		h.writeServiceError(w, r, err, methodCtx)
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *ServerHandler) UpdateSubscription(w http.ResponseWriter, r *http.Reques
 
 	updated, err := h.service.Update(r.Context(), item)
 	if err != nil {
-		h.writeServiceError(w, r, err)
+		h.writeServiceError(w, r, err, methodCtx)
 		return
 	}
 
@@ -135,8 +136,10 @@ func (h *ServerHandler) UpdateSubscription(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ServerHandler) DeleteSubscription(w http.ResponseWriter, r *http.Request, subscriptionID uuid.UUID) {
+	const methodCtx = "http.DeleteSubscription"
+
 	if err := h.service.Delete(r.Context(), subscriptionID); err != nil {
-		h.writeServiceError(w, r, err)
+		h.writeServiceError(w, r, err, methodCtx)
 		return
 	}
 
@@ -144,6 +147,8 @@ func (h *ServerHandler) DeleteSubscription(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ServerHandler) CalculateTotalCost(w http.ResponseWriter, r *http.Request, params CalculateTotalCostParams) {
+	const methodCtx = "http.CalculateTotalCost"
+
 	start, err := month.Parse(params.StartPeriod)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Message: "invalid start_period"})
@@ -164,30 +169,40 @@ func (h *ServerHandler) CalculateTotalCost(w http.ResponseWriter, r *http.Reques
 
 	total, err := h.service.CalculateTotalCost(r.Context(), filter)
 	if err != nil {
-		h.writeServiceError(w, r, err)
+		h.writeServiceError(w, r, err, methodCtx)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, TotalCostResponse{TotalCost: total, Currency: "RUB", StartPeriod: params.StartPeriod, EndPeriod: params.EndPeriod})
 }
 
-func (h *ServerHandler) writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
+func (h *ServerHandler) writeServiceError(w http.ResponseWriter, r *http.Request, err error, methodCtx string) {
+	log := h.logger.With("method", methodCtx)
+
 	switch {
 	case errors.Is(err, service.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, ErrorResponse{Message: err.Error()})
-	case errors.Is(err, subscription.ErrInvalidDates):
+	case isBadRequestError(err):
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Message: err.Error()})
 	default:
 		if errors.Is(err, context.Canceled) {
+			log.WarnContext(r.Context(), "request canceled", "error", err, "http_method", r.Method, "path", r.URL.Path, "request_id", chimiddleware.GetReqID(r.Context()))
 			writeJSON(w, http.StatusRequestTimeout, ErrorResponse{Message: err.Error()})
 			return
 		}
-		if err.Error() == "service name is required" || err.Error() == "price must be greater than zero" || err.Error() == "user id is required" || err.Error() == "start date is required" || err.Error() == "subscription id is required" || err.Error() == "start and end period are required" {
-			writeJSON(w, http.StatusBadRequest, ErrorResponse{Message: err.Error()})
-			return
-		}
+		log.ErrorContext(r.Context(), "request failed", "error", err, "http_method", r.Method, "path", r.URL.Path, "request_id", chimiddleware.GetReqID(r.Context()))
 		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Message: err.Error()})
 	}
+}
+
+func isBadRequestError(err error) bool {
+	return errors.Is(err, subscription.ErrInvalidDates) ||
+		errors.Is(err, subscription.ErrServiceNameRequired) ||
+		errors.Is(err, subscription.ErrPriceRequired) ||
+		errors.Is(err, subscription.ErrUserIDRequired) ||
+		errors.Is(err, subscription.ErrStartDateRequired) ||
+		errors.Is(err, service.ErrSubscriptionIDRequired) ||
+		errors.Is(err, service.ErrPeriodsRequired)
 }
 
 func fromCreateRequest(request CreateSubscriptionRequest) (subscription.Subscription, error) {
