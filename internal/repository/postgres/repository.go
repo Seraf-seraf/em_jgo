@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -21,21 +20,16 @@ import (
 type Repository struct {
 	pool    *pgxpool.Pool
 	builder sq.StatementBuilderType
-	logger  *slog.Logger
 }
 
-func New(pool *pgxpool.Pool, logger *slog.Logger) *Repository {
+func New(pool *pgxpool.Pool) *Repository {
 	return &Repository{
 		pool:    pool,
 		builder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
-		logger:  logger,
 	}
 }
 
 func (r *Repository) Create(ctx context.Context, item subscription.Subscription) (subscription.Subscription, error) {
-	const methodCtx = "repository.Create"
-	log := r.logger.With("method", methodCtx)
-
 	query, args, err := r.builder.Insert("subscriptions").
 		Columns("id", "service_name", "price", "user_id", "start_date", "end_date").
 		Values(item.ID, item.ServiceName, item.Price, item.UserID, item.StartDate, item.EndDate).
@@ -47,7 +41,6 @@ func (r *Repository) Create(ctx context.Context, item subscription.Subscription)
 
 	created, err := scanSubscription(r.pool.QueryRow(ctx, query, args...))
 	if err != nil {
-		log.ErrorContext(ctx, "insert failed", "error", err)
 		return subscription.Subscription{}, fmt.Errorf("insert subscription: %w", err)
 	}
 
@@ -55,9 +48,6 @@ func (r *Repository) Create(ctx context.Context, item subscription.Subscription)
 }
 
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (subscription.Subscription, error) {
-	const methodCtx = "repository.GetByID"
-	log := r.logger.With("method", methodCtx)
-
 	query, args, err := r.builder.Select("id", "service_name", "price", "user_id", "start_date", "end_date", "created_at", "updated_at").
 		From("subscriptions").
 		Where(sq.Eq{"id": id}).
@@ -71,7 +61,6 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (subscription.Su
 		if errors.Is(err, pgx.ErrNoRows) {
 			return subscription.Subscription{}, service.ErrNotFound
 		}
-		log.ErrorContext(ctx, "get failed", "error", err, "subscription_id", id)
 		return subscription.Subscription{}, fmt.Errorf("query subscription: %w", err)
 	}
 
@@ -79,9 +68,6 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (subscription.Su
 }
 
 func (r *Repository) Update(ctx context.Context, item subscription.Subscription) (subscription.Subscription, error) {
-	const methodCtx = "repository.Update"
-	log := r.logger.With("method", methodCtx)
-
 	query, args, err := r.builder.Update("subscriptions").
 		Set("service_name", item.ServiceName).
 		Set("price", item.Price).
@@ -101,7 +87,6 @@ func (r *Repository) Update(ctx context.Context, item subscription.Subscription)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return subscription.Subscription{}, service.ErrNotFound
 		}
-		log.ErrorContext(ctx, "update failed", "error", err, "subscription_id", item.ID)
 		return subscription.Subscription{}, fmt.Errorf("update subscription: %w", err)
 	}
 
@@ -109,9 +94,6 @@ func (r *Repository) Update(ctx context.Context, item subscription.Subscription)
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
-	const methodCtx = "repository.Delete"
-	log := r.logger.With("method", methodCtx)
-
 	query, args, err := r.builder.Delete("subscriptions").Where(sq.Eq{"id": id}).ToSql()
 	if err != nil {
 		return fmt.Errorf("build delete query: %w", err)
@@ -119,7 +101,6 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
 
 	commandTag, err := r.pool.Exec(ctx, query, args...)
 	if err != nil {
-		log.ErrorContext(ctx, "delete failed", "error", err, "subscription_id", id)
 		return fmt.Errorf("delete subscription: %w", err)
 	}
 	if commandTag.RowsAffected() == 0 {
@@ -130,9 +111,6 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (r *Repository) List(ctx context.Context, filter subscription.ListFilter) ([]subscription.Subscription, int64, error) {
-	const methodCtx = "repository.List"
-	log := r.logger.With("method", methodCtx)
-
 	base := r.builder.Select("id", "service_name", "price", "user_id", "start_date", "end_date", "created_at", "updated_at").
 		From("subscriptions")
 	countBase := r.builder.Select("COUNT(*)").From("subscriptions")
@@ -146,7 +124,6 @@ func (r *Repository) List(ctx context.Context, filter subscription.ListFilter) (
 
 	var total int64
 	if err := r.pool.QueryRow(ctx, countSQL, countArgs...).Scan(&total); err != nil {
-		log.ErrorContext(ctx, "count failed", "error", err)
 		return nil, 0, fmt.Errorf("count subscriptions: %w", err)
 	}
 
@@ -157,7 +134,6 @@ func (r *Repository) List(ctx context.Context, filter subscription.ListFilter) (
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
-		log.ErrorContext(ctx, "list query failed", "error", err)
 		return nil, 0, fmt.Errorf("list subscriptions: %w", err)
 	}
 	defer rows.Close()
@@ -179,9 +155,6 @@ func (r *Repository) List(ctx context.Context, filter subscription.ListFilter) (
 }
 
 func (r *Repository) CalculateTotalCost(ctx context.Context, filter subscription.TotalCostFilter) (int, error) {
-	const methodCtx = "repository.CalculateTotalCost"
-	log := r.logger.With("method", methodCtx)
-
 	query := strings.TrimSpace(`
 		SELECT COALESCE(SUM((
 			(EXTRACT(YEAR FROM LEAST(COALESCE(end_date, $2::date), $2::date)) - EXTRACT(YEAR FROM GREATEST(start_date, $1::date))) * 12 +
@@ -205,7 +178,6 @@ func (r *Repository) CalculateTotalCost(ctx context.Context, filter subscription
 
 	var total int
 	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
-		log.ErrorContext(ctx, "calculate failed", "error", err)
 		return 0, fmt.Errorf("calculate total cost: %w", err)
 	}
 

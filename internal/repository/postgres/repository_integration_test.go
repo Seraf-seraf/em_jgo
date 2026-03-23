@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
-	"log/slog"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -54,7 +52,7 @@ func TestRepositoryCRUDAndTotalCost(t *testing.T) {
 
 	require.NoError(t, applyMigrations(ctx, dsn))
 
-	repo := New(pool, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	repo := New(pool)
 	userID := uuid.New()
 	endDate := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 

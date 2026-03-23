@@ -14,10 +14,13 @@ import (
 	"github.com/example/em_jgo/internal/repository/postgres"
 	"github.com/example/em_jgo/internal/service"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
+	"gopkg.in/yaml.v3"
 )
 
 type App struct {
@@ -42,8 +45,8 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, err
 		return nil, err
 	}
 
-	repository := postgres.New(pool, logger)
-	serviceLayer := service.New(repository, logger)
+	repository := postgres.New(pool)
+	serviceLayer := service.New(repository)
 	handler := httpapi.NewHandler(serviceLayer, logger)
 
 	router := chi.NewRouter()

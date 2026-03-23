@@ -8,7 +8,13 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrInvalidDates = errors.New("end date must not be before start date")
+var (
+	ErrInvalidDates        = errors.New("end date must not be before start date")
+	ErrServiceNameRequired = errors.New("service name is required")
+	ErrPriceRequired       = errors.New("price must be greater than zero")
+	ErrUserIDRequired      = errors.New("user id is required")
+	ErrStartDateRequired   = errors.New("start date is required")
+)
 
 type Subscription struct {
 	ID          uuid.UUID
@@ -37,16 +43,16 @@ type TotalCostFilter struct {
 
 func (s Subscription) Validate() error {
 	if strings.TrimSpace(s.ServiceName) == "" {
-		return errors.New("service name is required")
+		return ErrServiceNameRequired
 	}
 	if s.Price < 1 {
-		return errors.New("price must be greater than zero")
+		return ErrPriceRequired
 	}
 	if s.UserID == uuid.Nil {
-		return errors.New("user id is required")
+		return ErrUserIDRequired
 	}
 	if s.StartDate.IsZero() {
-		return errors.New("start date is required")
+		return ErrStartDateRequired
 	}
 	if s.EndDate != nil && s.EndDate.Before(s.StartDate) {
 		return ErrInvalidDates
