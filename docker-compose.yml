@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: subscriptions-postgres
+    environment:
+      POSTGRES_DB: subscriptions
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d subscriptions"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  subscriptions:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: subscriptions-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./configs/config.docker.yml:/app/configs/config.yml:ro
+      - ./var/log/subscriptions:/app/var/log/subscriptions
+    environment:
+      TZ: UTC
+
+volumes:
+  postgres_data:
