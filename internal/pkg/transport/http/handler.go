@@ -144,12 +144,12 @@ func (h *ServerHandler) DeleteSubscription(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ServerHandler) CalculateTotalCost(w http.ResponseWriter, r *http.Request, params CalculateTotalCostParams) {
-	start, err := month.Parse(string(params.StartPeriod))
+	start, err := month.Parse(params.StartPeriod)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Message: "invalid start_period"})
 		return
 	}
-	end, err := month.Parse(string(params.EndPeriod))
+	end, err := month.Parse(params.EndPeriod)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Message: "invalid end_period"})
 		return
@@ -191,13 +191,13 @@ func (h *ServerHandler) writeServiceError(w http.ResponseWriter, r *http.Request
 }
 
 func fromCreateRequest(request CreateSubscriptionRequest) (subscription.Subscription, error) {
-	start, err := month.Parse(string(request.StartDate))
+	start, err := month.Parse(request.StartDate)
 	if err != nil {
 		return subscription.Subscription{}, errors.New("invalid start_date")
 	}
 	var end *time.Time
 	if request.EndDate != nil {
-		value, err := month.Parse(string(*request.EndDate))
+		value, err := month.Parse(*request.EndDate)
 		if err != nil {
 			return subscription.Subscription{}, errors.New("invalid end_date")
 		}
@@ -208,13 +208,13 @@ func fromCreateRequest(request CreateSubscriptionRequest) (subscription.Subscrip
 }
 
 func fromUpdateRequest(id uuid.UUID, request UpdateSubscriptionRequest) (subscription.Subscription, error) {
-	start, err := month.Parse(string(request.StartDate))
+	start, err := month.Parse(request.StartDate)
 	if err != nil {
 		return subscription.Subscription{}, errors.New("invalid start_date")
 	}
 	var end *time.Time
 	if request.EndDate != nil {
-		value, err := month.Parse(string(*request.EndDate))
+		value, err := month.Parse(*request.EndDate)
 		if err != nil {
 			return subscription.Subscription{}, errors.New("invalid end_date")
 		}
@@ -227,7 +227,7 @@ func fromUpdateRequest(id uuid.UUID, request UpdateSubscriptionRequest) (subscri
 func toResponse(item subscription.Subscription) SubscriptionResponse {
 	response := SubscriptionResponse{Id: item.ID, ServiceName: item.ServiceName, Price: item.Price, UserId: item.UserID, StartDate: month.Format(item.StartDate)}
 	if item.EndDate != nil {
-		formatted := MonthYear(month.Format(*item.EndDate))
+		formatted := month.Format(*item.EndDate)
 		response.EndDate = &formatted
 	}
 	return response

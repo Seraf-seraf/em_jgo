@@ -2,25 +2,22 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
-	httpSwagger "github.com/swaggo/http-swagger/v2"
-	"gopkg.in/yaml.v3"
-
 	"github.com/example/em_jgo/internal/pkg/config"
 	httpapi "github.com/example/em_jgo/internal/pkg/transport/http"
 	"github.com/example/em_jgo/internal/repository/postgres"
 	"github.com/example/em_jgo/internal/service"
+	"github.com/getkin/kin-openapi/openapi3"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type App struct {
@@ -85,7 +82,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, err
 func (a *App) Run() error {
 	const methodCtx = "app.Run"
 	a.logger.With("method", methodCtx).Info("starting http server", "addr", a.server.Addr)
-	if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen and serve: %w", err)
 	}
 	return nil
