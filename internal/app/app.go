@@ -2,10 +2,10 @@ package app
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -16,14 +16,11 @@ import (
 	"github.com/pressly/goose/v3"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
-	"github.com/example/em_jgo/internal/config"
+	"github.com/example/em_jgo/internal/pkg/config"
+	httpapi "github.com/example/em_jgo/internal/pkg/transport/http"
 	"github.com/example/em_jgo/internal/repository/postgres"
 	"github.com/example/em_jgo/internal/service"
-	httpapi "github.com/example/em_jgo/internal/transport/http"
 )
-
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
 
 type App struct {
 	server *http.Server
@@ -113,7 +110,7 @@ func runMigrations(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger)
 	log := logger.With("method", methodCtx)
 	db := stdlib.OpenDBFromPool(pool)
 	defer db.Close()
-	goose.SetBaseFS(migrationsFS)
+	goose.SetBaseFS(os.DirFS("internal"))
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("set goose dialect: %w", err)
 	}

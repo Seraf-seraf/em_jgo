@@ -1,0 +1,22 @@
+http:
+  host: 0.0.0.0
+  port: 8080
+  read_timeout: 5s
+  write_timeout: 10s
+  shutdown_timeout: 10s
+postgres:
+  host: postgres
+  port: 5432
+  database: subscriptions
+  user: postgres
+  password: postgres
+  ssl_mode: disable
+  max_open_conns: 10
+  min_idle_conns: 2
+  conn_max_lifetime: 1h
+logger:
+  level: info
+  format: json
+  output_dir: /app/var/log/subscriptions
+  add_source: false
+  service: subscriptions-service

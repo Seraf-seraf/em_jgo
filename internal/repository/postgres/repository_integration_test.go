@@ -115,7 +115,7 @@ func applyMigrations(ctx context.Context, dsn string) error {
 
 func migrationsDir() string {
 	_, filename, _, _ := runtime.Caller(0)
-	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "app", "migrations"))
+	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "migrations"))
 }
 
 func stringPtr(value string) *string {

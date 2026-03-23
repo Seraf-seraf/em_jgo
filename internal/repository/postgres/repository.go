@@ -9,12 +9,12 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/example/em_jgo/internal/pkg/month"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/example/em_jgo/internal/domain/subscription"
-	"github.com/example/em_jgo/internal/month"
+	"github.com/example/em_jgo/internal/pkg/month"
 	"github.com/example/em_jgo/internal/service"
 )
 
