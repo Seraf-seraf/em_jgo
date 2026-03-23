@@ -1,11 +1,9 @@
 APP_NAME := subscriptions
 CMD_PATH := ./cmd/subscriptions
 CONFIG ?= configs/config.yml
-DOCKER_COMPOSE ?= docker compose
 DOCKERFILE := build/Dockerfile
-UNIT_PACKAGES := $(shell go list ./... | grep -v '^github.com/example/em_jgo/internal/repository/postgres$$')
 
-.PHONY: build run test test-unit test-integration fmt up down compose-up compose-down docker-build generate
+.PHONY: build run test fmt up down generate
 
 build:
 	mkdir -p bin
@@ -17,28 +15,14 @@ run:
 fmt:
 	go fmt ./...
 
-test: test-unit test-integration
-
-test-unit:
-	go test $(UNIT_PACKAGES)
-
-test-integration:
-	go test ./internal/repository/postgres -count=1
+test:
+	go test ./...
 
 generate:
 	go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
 
-docker-build:
-	docker build -f $(DOCKERFILE) -t $(APP_NAME):local .
-
 up:
-	$(DOCKER_COMPOSE) up --build
+	docker-compose up --build -d
 
 down:
-	$(DOCKER_COMPOSE) down -v
-
-compose-up:
-	$(MAKE) up
-
-compose-down:
-	$(MAKE) down
+	docker-compose down -v
