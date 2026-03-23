@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	"github.com/example/em_jgo/internal/app"
-	"github.com/example/em_jgo/pkg/config"
-	pkglogger "github.com/example/em_jgo/pkg/logger"
+	"github.com/example/em_jgo/internal/pkg/config"
+	pkglogger "github.com/example/em_jgo/internal/pkg/logger"
 )
 
 func main() {

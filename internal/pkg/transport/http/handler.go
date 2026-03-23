@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/example/em_jgo/internal/pkg/month"
 	"github.com/google/uuid"
 
 	"github.com/example/em_jgo/internal/domain/subscription"
 	"github.com/example/em_jgo/internal/service"
-	"github.com/example/em_jgo/pkg/month"
 )
 
 type SubscriptionService interface {
