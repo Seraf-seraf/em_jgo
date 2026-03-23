@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/example/em_jgo/internal/domain/subscription"
+	"github.com/example/em_jgo/internal/month"
 	"github.com/example/em_jgo/internal/service"
 )
 

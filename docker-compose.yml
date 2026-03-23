@@ -27,9 +27,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./configs/config.docker.yml:/app/configs/config.yml:ro
       - ./var/log/subscriptions:/app/var/log/subscriptions
     environment:
+      APP_POSTGRES_HOST: postgres
       TZ: UTC
 
 volumes:

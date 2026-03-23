@@ -8,16 +8,18 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/example/em_jgo/internal/pkg/config"
-	"github.com/example/em_jgo/internal/pkg/transport/http"
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
+	"github.com/example/em_jgo/internal/config"
 	"github.com/example/em_jgo/internal/repository/postgres"
 	"github.com/example/em_jgo/internal/service"
+	httpapi "github.com/example/em_jgo/internal/transport/http"
 )
 
 //go:embed migrations/*.sql
